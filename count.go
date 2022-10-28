@@ -7,7 +7,7 @@ import (
 	"go.mongodb.org/mongo-driver/bson"
 )
 
-func (mf *yamgo) CountDocuments(filter []bson.M) (int, error) {
+func (mf *Model) CountDocuments(filter []bson.M) (int, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), LongTimeout*time.Second)
 	defer cancel()

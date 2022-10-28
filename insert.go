@@ -8,7 +8,7 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-func (mf *yamgo) InsertOne(modelPtr interface{}) (res *mongo.InsertOneResult, err error) {
+func (mf *Model) InsertOne(modelPtr interface{}) (res *mongo.InsertOneResult, err error) {
 	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
 	defer cancel()
 	res, err = mf.col.InsertOne(ctx, modelPtr)
@@ -22,7 +22,7 @@ func (mf *yamgo) InsertOne(modelPtr interface{}) (res *mongo.InsertOneResult, er
 }
 
 //TODO Find a way to pass pointer and attach its ID to the respective array elements
-func (mf *yamgo) InsertMany(models []interface{}) (res *mongo.InsertManyResult, err error) {
+func (mf *Model) InsertMany(models []interface{}) (res *mongo.InsertManyResult, err error) {
 	// if models == nil || len(models) == 0 {
 	// 	return nil, errors.New("The length of Model Array is 0")
 	// }

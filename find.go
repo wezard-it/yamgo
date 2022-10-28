@@ -20,7 +20,7 @@ type PopulateOptions struct {
 	Projection []string
 }
 
-func (mf *yamgo) FindOne(filter bson.M, b interface{}) (err error) {
+func (mf *Model) FindOne(filter bson.M, b interface{}) (err error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
 
@@ -41,7 +41,7 @@ func (mf *yamgo) FindOne(filter bson.M, b interface{}) (err error) {
 	return nil
 }
 
-func (mf *yamgo) FindByID(id string, result interface{}) (err error) {
+func (mf *Model) FindByID(id string, result interface{}) (err error) {
 	objectID, err := primitive.ObjectIDFromHex(id)
 
 	if err != nil {
@@ -51,7 +51,7 @@ func (mf *yamgo) FindByID(id string, result interface{}) (err error) {
 	return mf.FindOne(bson.M{"_id": objectID}, result)
 }
 
-func (mf *yamgo) FindByObjectID(objectID primitive.ObjectID, result interface{}) (err error) {
+func (mf *Model) FindByObjectID(objectID primitive.ObjectID, result interface{}) (err error) {
 
 	if err != nil {
 		return err
@@ -60,7 +60,7 @@ func (mf *yamgo) FindByObjectID(objectID primitive.ObjectID, result interface{})
 	return mf.FindOne(bson.M{"_id": objectID}, result)
 }
 
-func (mf *yamgo) Find(filter bson.M, results interface{}) error {
+func (mf *Model) Find(filter bson.M, results interface{}) error {
 	ctx, cancel := context.WithTimeout(context.Background(), LongTimeout*time.Second)
 	defer cancel()
 
@@ -75,7 +75,7 @@ func (mf *yamgo) Find(filter bson.M, results interface{}) error {
 	return nil
 }
 
-func (mf *yamgo) executeCursorQuery(query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection string, results interface{}) error {
+func (mf *Model) executeCursorQuery(query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection string, results interface{}) error {
 
 	options := options.Find()
 	options.SetSort(sort)
@@ -114,7 +114,7 @@ func (mf *yamgo) executeCursorQuery(query []bson.M, sort bson.D, limit int64, co
 	return nil
 }
 
-func (mf *yamgo) PaginatedFind(params PaginationFindParams, results interface{}) (Page, error) {
+func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{}) (Page, error) {
 
 	var err error
 
@@ -208,7 +208,7 @@ func (mf *yamgo) PaginatedFind(params PaginationFindParams, results interface{})
 	return page, nil
 }
 
-func (mf *yamgo) FindWithOptions(filter bson.M, option options.FindOptions, results interface{}) error {
+func (mf *Model) FindWithOptions(filter bson.M, option options.FindOptions, results interface{}) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), LongTimeout*time.Second)
 
@@ -225,12 +225,12 @@ func (mf *yamgo) FindWithOptions(filter bson.M, option options.FindOptions, resu
 	return nil
 }
 
-func (mf *yamgo) FindOneAndPopulate(filter bson.M, findOptions options.FindOptions, populate []PopulateOptions, result interface{}) error {
+func (mf *Model) FindOneAndPopulate(filter bson.M, findOptions options.FindOptions, populate []PopulateOptions, result interface{}) error {
 	findOptions.SetLimit(-1)
 	return mf.FindAndPopulate(filter, findOptions, populate, result)
 }
 
-func (mf *yamgo) FindAndPopulate(filter bson.M, option options.FindOptions, populate []PopulateOptions, results interface{}) error {
+func (mf *Model) FindAndPopulate(filter bson.M, option options.FindOptions, populate []PopulateOptions, results interface{}) error {
 
 	ctx, cancel := context.WithTimeout(context.Background(), LongTimeout*time.Second)
 

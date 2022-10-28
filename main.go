@@ -5,11 +5,11 @@ import (
 	"go.mongodb.org/mongo-driver/mongo"
 )
 
-type yamgo struct {
-	col 	*mongo.Collection
+type Model struct {
+	col *mongo.Collection
 }
 
-func ToObjectID (hex string) primitive.ObjectID {
+func ToObjectID(hex string) primitive.ObjectID {
 	oId, err := primitive.ObjectIDFromHex(hex)
 
 	if err != nil {
@@ -19,6 +19,6 @@ func ToObjectID (hex string) primitive.ObjectID {
 	return oId
 }
 
-func NewModel(collectionName string) yamgo {
-	return yamgo{col: GetCollection(collectionName)}
+func NewModel(collectionName string) Model {
+	return Model{col: GetCollection(collectionName)}
 }
