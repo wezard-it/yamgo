@@ -125,7 +125,6 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 	params = ensureMandatoryParams(params)
 	shouldSecondarySortOnID := params.PaginatedField != "_id"
 
-	// Compute total count of documents matching filter - only computed if CountTotal is True
 	var count int
 	if params.CountTotal {
 		count, err = mf.CountDocuments([]bson.M{params.Query})
@@ -140,20 +139,17 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 		return Page{}, err
 	}
 
-	// Execute the augmented query, get an additional element to see if there's another page
 	err = mf.executeCursorQuery(queries, sort, params.Limit, params.Collation, params.Hint, params.Projection, results)
 
 	if err != nil {
 		return Page{}, err
 	}
 
-	// Get the results slice's pointer and value
 	resultsPtr := reflect.ValueOf(results)
 	resultsVal := resultsPtr.Elem()
 
 	hasMore := resultsVal.Len() > int(params.Limit)
 
-	// Remove the extra element that we added to see if there was another page
 	if hasMore {
 		resultsVal = resultsVal.Slice(0, resultsVal.Len()-1)
 	}
@@ -165,7 +161,6 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 	var nextCursor string
 
 	if resultsVal.Len() > 0 {
-		// If we sorted reverse to get the previous page, correct the sort order
 		if params.Previous != "" {
 			for left, right := 0, resultsVal.Len()-1; left < right; left, right = left+1, right-1 {
 				leftValue := resultsVal.Index(left).Interface()
@@ -174,7 +169,6 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 			}
 		}
 
-		// Generate the previous cursor
 		if hasPrevious {
 			firstResult := resultsVal.Index(0).Interface()
 			previousCursor, err = generateCursor(firstResult, params.PaginatedField, shouldSecondarySortOnID)
@@ -183,7 +177,6 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 			}
 		}
 
-		// Generate the next cursor
 		if hasNext {
 			lastResult := resultsVal.Index(resultsVal.Len() - 1).Interface()
 			nextCursor, err = generateCursor(lastResult, params.PaginatedField, shouldSecondarySortOnID)
@@ -193,7 +186,6 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 		}
 	}
 
-	// Create the response cursor
 	page := Page{
 		Previous:    previousCursor,
 		HasPrevious: hasPrevious,
@@ -202,7 +194,6 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 		Count:       count,
 	}
 
-	// Save the modified result slice in the result pointer
 	resultsPtr.Elem().Set(resultsVal)
 
 	return page, nil
