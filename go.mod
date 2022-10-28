@@ -1,4 +1,4 @@
-module github.com/Fer99n/yamgo
+module github.com/fer99n/yamgo
 
 go 1.19
 
