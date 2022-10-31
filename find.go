@@ -20,7 +20,7 @@ type PopulateOptions struct {
 	Projection []string
 }
 
-func (mf *Model) FindOne(filter bson.M, b interface{}) (err error) {
+func (mf *Model) FindOne(filter bson.M, result interface{}) (err error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
 
@@ -32,7 +32,7 @@ func (mf *Model) FindOne(filter bson.M, b interface{}) (err error) {
 		return res.Err()
 	}
 
-	err = res.Decode(b)
+	err = res.Decode(result)
 
 	if err != nil {
 		return err
@@ -68,10 +68,11 @@ func (mf *Model) Find(filter bson.M, results interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = cur.All(ctx, results)
-	if err != nil {
+
+	if err = cur.All(ctx, results); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -127,7 +128,7 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 
 	var count int
 	if params.CountTotal {
-		count, err = mf.CountDocuments([]bson.M{params.Query})
+		count, err = mf.CountDocuments(params.Query)
 		if err != nil {
 			return Page{}, err
 		}
@@ -244,13 +245,12 @@ func (mf *Model) FindAndPopulate(filter bson.M, option options.FindOptions, popu
 		return err
 	}
 
-	if *option.Limit < 0 {
+	if option.Limit != nil && *option.Limit < 0 {
 		if cur.Next(ctx) {
 
 			if err := cur.Decode(results); err != nil {
 				return err
 			}
-			fmt.Println(results)
 		}
 
 	} else {
@@ -269,9 +269,39 @@ func buildAddFieldStage(populate PopulateOptions) bson.D {
 }
 
 func buildLookupStage(populate PopulateOptions) bson.D {
-	projectionStage := bson.D{}
-	for _, projectionField := range populate.Projection {
-		projectionStage = append(projectionStage, bson.E{Key: projectionField, Value: 1})
+	var projection bson.D = nil
+
+	if len(populate.Projection) > 0 {
+
+		for _, projectionField := range populate.Projection {
+			projection = append(projection, bson.E{Key: projectionField, Value: 1})
+		}
+	}
+
+	lookupPipeline := bson.A{
+		bson.D{
+			{Key: "$match",
+				Value: bson.D{
+					{Key: "$expr",
+						Value: bson.D{
+							{Key: "$eq",
+								Value: bson.A{
+									"$_id",
+									"$$oId",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if projection != nil {
+		lookupPipeline = append(lookupPipeline, bson.D{
+			{Key: "$project", Value: projection},
+		})
+
 	}
 
 	return bson.D{
@@ -280,27 +310,7 @@ func buildLookupStage(populate PopulateOptions) bson.D {
 				{Key: "from", Value: populate.On},
 				{Key: "let", Value: bson.D{{Key: "oId", Value: "$" + populate.Path}}},
 				{Key: "pipeline",
-					Value: bson.A{
-						bson.D{
-							{Key: "$match",
-								Value: bson.D{
-									{Key: "$expr",
-										Value: bson.D{
-											{Key: "$eq",
-												Value: bson.A{
-													"$_id",
-													"$$oId",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-						bson.D{
-							{Key: "$project", Value: projectionStage},
-						},
-					},
+					Value: lookupPipeline,
 				},
 				{Key: "as", Value: populate.Path},
 			},
