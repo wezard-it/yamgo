@@ -269,9 +269,39 @@ func buildAddFieldStage(populate PopulateOptions) bson.D {
 }
 
 func buildLookupStage(populate PopulateOptions) bson.D {
-	projectionStage := bson.D{}
-	for _, projectionField := range populate.Projection {
-		projectionStage = append(projectionStage, bson.E{Key: projectionField, Value: 1})
+	var projection bson.D = nil
+
+	if len(populate.Projection) > 0 {
+
+		for _, projectionField := range populate.Projection {
+			projection = append(projection, bson.E{Key: projectionField, Value: 1})
+		}
+	}
+
+	lookupPipeline := bson.A{
+		bson.D{
+			{Key: "$match",
+				Value: bson.D{
+					{Key: "$expr",
+						Value: bson.D{
+							{Key: "$eq",
+								Value: bson.A{
+									"$_id",
+									"$$oId",
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+	}
+
+	if projection != nil {
+		lookupPipeline = append(lookupPipeline, bson.D{
+			{Key: "$project", Value: projection},
+		})
+
 	}
 
 	return bson.D{
@@ -280,27 +310,7 @@ func buildLookupStage(populate PopulateOptions) bson.D {
 				{Key: "from", Value: populate.On},
 				{Key: "let", Value: bson.D{{Key: "oId", Value: "$" + populate.Path}}},
 				{Key: "pipeline",
-					Value: bson.A{
-						bson.D{
-							{Key: "$match",
-								Value: bson.D{
-									{Key: "$expr",
-										Value: bson.D{
-											{Key: "$eq",
-												Value: bson.A{
-													"$_id",
-													"$$oId",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-						bson.D{
-							{Key: "$project", Value: projectionStage},
-						},
-					},
+					Value: lookupPipeline,
 				},
 				{Key: "as", Value: populate.Path},
 			},
