@@ -52,6 +52,7 @@ func Connect(params ConnectionParams) {
 }
 
 func Disconnect() error {
+	fmt.Println("Disconnecting from DB")
 	return _mongo.client.Disconnect(context.TODO())
 }
 
