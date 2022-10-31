@@ -244,13 +244,12 @@ func (mf *Model) FindAndPopulate(filter bson.M, option options.FindOptions, popu
 		return err
 	}
 
-	if *option.Limit < 0 {
+	if option.Limit != nil && *option.Limit < 0 {
 		if cur.Next(ctx) {
 
 			if err := cur.Decode(results); err != nil {
 				return err
 			}
-			fmt.Println(results)
 		}
 
 	} else {
