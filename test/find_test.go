@@ -1,7 +1,6 @@
 package test
 
 import (
-	"context"
 	"testing"
 
 	"github.com/nocfer/yamgo"
@@ -12,13 +11,6 @@ import (
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
-func dropCollection(c string) {
-
-	if err := yamgo.GetCollection(c).Drop(context.TODO()); err != nil {
-		panic(err)
-	}
-}
-
 func TestFindOneEmpty(t *testing.T) {
 
 	itemModel := models.ItemModel()
@@ -28,7 +20,7 @@ func TestFindOneEmpty(t *testing.T) {
 	assert.Error(t, err)
 	assert.Empty(t, result)
 
-	dropCollection("items")
+	DropCollection("items")
 }
 
 func TestFindOne(t *testing.T) {
@@ -49,7 +41,7 @@ func TestFindOne(t *testing.T) {
 
 	assert.NotEmpty(t, result)
 	assert.Equal(t, result.ID, id2.InsertedID)
-	dropCollection("items")
+	DropCollection("items")
 
 }
 
@@ -71,7 +63,7 @@ func TestFindByID(t *testing.T) {
 
 	assert.NotEmpty(t, result)
 	assert.Equal(t, result.ID, id2.InsertedID)
-	dropCollection("items")
+	DropCollection("items")
 
 }
 
@@ -93,7 +85,8 @@ func TestFindByObjectID(t *testing.T) {
 
 	assert.NotEmpty(t, result)
 	assert.Equal(t, result.ID, id2.InsertedID)
-	dropCollection("items")
+	
+	DropCollection("items")
 
 }
 
@@ -122,7 +115,8 @@ func TestFind(t *testing.T) {
 
 	assert.Contains(t, ids, id1.InsertedID)
 	assert.Contains(t, ids, id2.InsertedID)
-	dropCollection("items")
+
+	DropCollection("items")
 
 }
 
@@ -157,7 +151,7 @@ func TestPaginatedFind(t *testing.T) {
 	assert.Equal(t, page.Count, 2)
 	assert.Equal(t, results[0].ID, id1.InsertedID)
 
-	dropCollection("items")
+	DropCollection("items")
 
 }
 
@@ -184,8 +178,8 @@ func TestFindWithOptions(t *testing.T) {
 	assert.NotEmpty(t, results)
 	assert.Equal(t, results[1].ID, id1.InsertedID)
 	assert.Equal(t, results[0].ID, id2.InsertedID)
-	dropCollection("items")
 
+	DropCollection("items")
 }
 
 func TestFindOneAndPopulate(t *testing.T) {
@@ -217,7 +211,7 @@ func TestFindOneAndPopulate(t *testing.T) {
 	assert.Equal(t, result["_id"], foo.ID)
 	assert.Equal(t, result["item"].(bson.M)["_id"], item.ID)
 
-	dropCollection("items")
+	DropCollection("items")
 }
 
 func TestFindAndPopulate(t *testing.T) {
@@ -249,5 +243,5 @@ func TestFindAndPopulate(t *testing.T) {
 	assert.Equal(t, results[0]["_id"], foo.ID)
 	assert.Equal(t, results[0]["item"].(bson.M)["_id"], item.ID)
 
-	dropCollection("items")
+	DropCollection("items")
 }
