@@ -17,8 +17,8 @@ type Mongo struct {
 }
 
 type ConnectionParams struct {
-	connectionUrl string
-	dbName        string
+	ConnectionUrl string
+	DbName        string
 }
 
 const (
@@ -31,8 +31,8 @@ var _mongo Mongo
 
 // It connects to the database.
 func Connect(params ConnectionParams) {
-	connectionURL := params.connectionUrl
-	dbName := params.dbName
+	connectionURL := params.ConnectionUrl
+	dbName := params.DbName
 
 	if connectionURL == "" || dbName == "" {
 		panic(errors.New("cannot start db, missing connection parameters"))
@@ -49,6 +49,10 @@ func Connect(params ConnectionParams) {
 			panic(_mongo.Err)
 		}
 	}
+}
+
+func Disconnect() error {
+	return _mongo.client.Disconnect(context.TODO())
 }
 
 func GetDB() Mongo {
