@@ -20,7 +20,7 @@ type PopulateOptions struct {
 	Projection []string
 }
 
-func (mf *Model) FindOne(filter bson.M, b interface{}) (err error) {
+func (mf *Model) FindOne(filter bson.M, result interface{}) (err error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
 
@@ -32,7 +32,7 @@ func (mf *Model) FindOne(filter bson.M, b interface{}) (err error) {
 		return res.Err()
 	}
 
-	err = res.Decode(b)
+	err = res.Decode(result)
 
 	if err != nil {
 		return err
@@ -68,10 +68,11 @@ func (mf *Model) Find(filter bson.M, results interface{}) error {
 	if err != nil {
 		return err
 	}
-	err = cur.All(ctx, results)
-	if err != nil {
+
+	if err = cur.All(ctx, results); err != nil {
 		return err
 	}
+
 	return nil
 }
 
@@ -127,7 +128,7 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 
 	var count int
 	if params.CountTotal {
-		count, err = mf.CountDocuments([]bson.M{params.Query})
+		count, err = mf.CountDocuments(params.Query)
 		if err != nil {
 			return Page{}, err
 		}
