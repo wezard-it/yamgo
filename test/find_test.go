@@ -8,6 +8,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
+	"go.mongodb.org/mongo-driver/mongo"
 	"go.mongodb.org/mongo-driver/mongo/options"
 )
 
@@ -85,7 +86,7 @@ func TestFindByObjectID(t *testing.T) {
 
 	assert.NotEmpty(t, result)
 	assert.Equal(t, result.ID, id2.InsertedID)
-	
+
 	DropCollection("items")
 
 }
@@ -244,4 +245,34 @@ func TestFindAndPopulate(t *testing.T) {
 	assert.Equal(t, results[0]["item"].(bson.M)["_id"], item.ID)
 
 	DropCollection("items")
+}
+
+func TestAggregate(t *testing.T) {
+	item1 := models.ItemSchema{ID: primitive.NewObjectID()}
+	item2 := models.ItemSchema{ID: primitive.NewObjectID()}
+	itemModel := models.ItemModel()
+
+	id1, err1 := itemModel.InsertOne(&item1)
+	id2, err2 := itemModel.InsertOne(&item2)
+	assert.Nil(t, err1)
+	assert.Nil(t, err2)
+	assert.Equal(t, id1.InsertedID, item1.ID)
+	assert.Equal(t, id2.InsertedID, item2.ID)
+	results := []models.ItemSchema{}
+
+	pipeline := mongo.Pipeline{}
+
+	matchStage := bson.D{{Key: "$match", Value: bson.D{{Key: "_id", Value: id1.InsertedID}}}}
+
+	pipeline = append(pipeline, matchStage)
+
+	err := itemModel.Aggregate(pipeline, &results)
+
+	assert.Nil(t, err)
+	assert.NotEmpty(t, results)
+	assert.Len(t, results, 1)
+	assert.Equal(t, results[0].ID, id1.InsertedID)
+
+	DropCollection("items")
+
 }

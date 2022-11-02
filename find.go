@@ -264,6 +264,25 @@ func (mf *Model) FindAndPopulate(filter bson.M, option options.FindOptions, popu
 	return nil
 }
 
+func (mf *Model) Aggregate(pipeline mongo.Pipeline, results interface{}) error {
+
+	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
+
+	defer cancel()
+
+	cur, err := mf.col.Aggregate(ctx, pipeline)
+
+	if err != nil {
+		return err
+	}
+
+	if err = cur.All(ctx, results); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func buildAddFieldStage(populate PopulateOptions) bson.D {
 	return bson.D{{Key: "$addFields", Value: bson.D{{Key: populate.Path, Value: bson.D{{Key: "$first", Value: "$" + populate.Path}}}}}}
 }
