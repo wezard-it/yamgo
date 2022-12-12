@@ -200,7 +200,7 @@ func TestFindOneAndPopulate(t *testing.T) {
 
 	result := bson.M{}
 	options := options.FindOptions{}
-	populateOptions := []yamgo.PopulateOptions{{On: "items", Path: "item"}}
+	populateOptions := []yamgo.PopulateOptions{{Collection: "items", LocalField: "item"}}
 
 	err := fooModel.FindOneAndPopulate(bson.M{"_id": foo.ID}, options, populateOptions, &result)
 
@@ -232,7 +232,7 @@ func TestFindAndPopulate(t *testing.T) {
 
 	results := []bson.M{}
 	options := options.FindOptions{}
-	populateOptions := []yamgo.PopulateOptions{{On: "items", Path: "item"}}
+	populateOptions := []yamgo.PopulateOptions{{Collection: "items", LocalField: "item"}}
 
 	err := fooModel.FindAndPopulate(bson.M{"_id": foo.ID}, options, populateOptions, &results)
 

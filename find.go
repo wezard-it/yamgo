@@ -15,8 +15,8 @@ import (
 )
 
 type PopulateOptions struct {
-	On         string
-	Path       string
+	Collection string
+	LocalField string
 	Projection []string
 }
 
@@ -76,14 +76,11 @@ func (mf *Model) Find(filter bson.M, results interface{}) error {
 	return nil
 }
 
-func (mf *Model) executeCursorQuery(query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection string, results interface{}) error {
+func (mf *Model) executeCursorQuery(query []bson.M, sort bson.D, limit int64, collation *options.Collation, hint interface{}, projection string, lookups []PopulateOptions, results interface{}) error {
 
 	options := options.Find()
 	options.SetSort(sort)
 	options.SetLimit(limit + 1)
-
-	ctx, cancel := context.WithTimeout(context.Background(), LongTimeout*time.Second)
-	defer cancel()
 
 	if collation != nil {
 		options.SetCollation(collation)
@@ -102,17 +99,10 @@ func (mf *Model) executeCursorQuery(query []bson.M, sort bson.D, limit int64, co
 		options.SetProjection(pMap)
 	}
 
-	cursor, err := mf.col.Find(ctx, bson.M{"$and": query}, options)
-	if err != nil {
-		return err
-	}
-	err = cursor.All(ctx, results)
+	return mf.FindAndPopulate(bson.M{"$and": query}, *options, lookups, results)
 
-	if err != nil {
-		return err
-	}
+	// return mf.FindWithOptions(bson.M{"$and": query}, *options, results)
 
-	return nil
 }
 
 func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{}) (Page, error) {
@@ -140,7 +130,7 @@ func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{})
 		return Page{}, err
 	}
 
-	err = mf.executeCursorQuery(queries, sort, params.Limit, params.Collation, params.Hint, params.Projection, results)
+	err = mf.executeCursorQuery(queries, sort, params.Limit, params.Collation, params.Hint, params.Projection, params.Expansion, results)
 
 	if err != nil {
 		return Page{}, err
@@ -228,15 +218,28 @@ func (mf *Model) FindAndPopulate(filter bson.M, option options.FindOptions, popu
 
 	defer cancel()
 
+	var limit = 10
+
+	if *option.Limit != 0 {
+		limit = int(*option.Limit)
+	}
+
 	matchStage := bson.D{
 		{Key: "$match", Value: filter},
 	}
 
-	pipeline := mongo.Pipeline{}
-	pipeline = append(pipeline, matchStage)
+	limitStage := bson.D{
+		{Key: "$limit", Value: limit},
+	}
 
+	sortStage := bson.D{
+		{Key: "$sort", Value: option.Sort},
+	}
+
+	pipeline := mongo.Pipeline{}
+	pipeline = append(pipeline, sortStage, matchStage, limitStage)
 	for _, value := range populate {
-		pipeline = append(pipeline, buildLookupStage(value), buildAddFieldStage(value))
+		pipeline = append(pipeline, buildLookupStage(value)...)
 	}
 
 	cur, err := mf.col.Aggregate(ctx, pipeline)
@@ -283,11 +286,8 @@ func (mf *Model) Aggregate(pipeline mongo.Pipeline, results interface{}) error {
 	return nil
 }
 
-func buildAddFieldStage(populate PopulateOptions) bson.D {
-	return bson.D{{Key: "$addFields", Value: bson.D{{Key: populate.Path, Value: bson.D{{Key: "$first", Value: "$" + populate.Path}}}}}}
-}
+func buildLookupStage(populate PopulateOptions) []bson.D {
 
-func buildLookupStage(populate PopulateOptions) bson.D {
 	var projection bson.D = nil
 
 	if len(populate.Projection) > 0 {
@@ -303,14 +303,43 @@ func buildLookupStage(populate PopulateOptions) bson.D {
 				Value: bson.D{
 					{Key: "$expr",
 						Value: bson.D{
-							{Key: "$eq",
-								Value: bson.A{
-									"$_id",
-									"$$oId",
+							{Key: "$cond",
+								Value: bson.D{
+									{Key: "if", Value: bson.D{{Key: "$isArray", Value: "$$refId"}}},
+									{Key: "then",
+										Value: bson.D{
+											{Key: "$in",
+												Value: bson.A{
+													"$_id",
+													"$$refId",
+												},
+											},
+										},
+									},
+									{Key: "else",
+										Value: bson.D{
+											{Key: "$eq",
+												Value: bson.A{
+													"$_id",
+													"$$refId",
+												},
+											},
+										},
+									},
 								},
 							},
 						},
 					},
+				},
+			},
+		},
+		bson.D{
+			{Key: "$project",
+				Value: bson.D{
+					{Key: "__v", Value: 0},
+					{Key: "v", Value: 0},
+					{Key: "updated_at", Value: 0},
+					{Key: "created_at", Value: 0},
 				},
 			},
 		},
@@ -323,16 +352,48 @@ func buildLookupStage(populate PopulateOptions) bson.D {
 
 	}
 
-	return bson.D{
+	lookup := bson.D{
 		{Key: "$lookup",
 			Value: bson.D{
-				{Key: "from", Value: populate.On},
-				{Key: "let", Value: bson.D{{Key: "oId", Value: "$" + populate.Path}}},
+				{Key: "from", Value: populate.Collection},
+				{Key: "let", Value: bson.D{{Key: "refId", Value: "$" + populate.LocalField}}},
 				{Key: "pipeline",
 					Value: lookupPipeline,
 				},
-				{Key: "as", Value: populate.Path},
+				{Key: "as", Value: "tmp_" + populate.LocalField},
 			},
 		},
 	}
+
+	addFields :=
+
+		bson.D{
+			{Key: "$addFields",
+				Value: bson.D{
+					{Key: populate.LocalField,
+						Value: bson.D{
+							{Key: "$cond",
+								Value: bson.D{
+									{Key: "if", Value: bson.D{{Key: "$isArray", Value: "$" + populate.LocalField}}},
+									{Key: "then", Value: "$tmp_" + populate.LocalField},
+									{Key: "else", Value: bson.D{{Key: "$first", Value: "$tmp_" + populate.LocalField}}},
+								},
+							},
+						},
+					},
+				},
+			},
+		}
+
+	unset := bson.D{
+		{Key: "$unset",
+			Value: bson.A{
+				"tmp_" + populate.LocalField,
+			},
+		},
+	}
+
+	expansion := []bson.D{lookup, addFields, unset}
+
+	return expansion
 }

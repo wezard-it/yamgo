@@ -33,6 +33,11 @@ import (
 )
 
 type (
+	Expansion struct {
+		Collection   string
+		LocalField   string
+		ForeignField string
+	}
 	PaginationFindParams struct {
 		Query          primitive.M        `form:"query"`
 		Limit          int64              `form:"limit" binding:"required"`
@@ -44,6 +49,7 @@ type (
 		CountTotal     bool               `form:"count_total"`
 		Hint           interface{}        `form:"hint"`
 		Projection     string             `form:"projection"`
+		Expansion      []PopulateOptions
 	}
 
 	Page struct {
