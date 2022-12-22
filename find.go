@@ -292,78 +292,12 @@ func (mf *Model) Aggregate(pipeline mongo.Pipeline, results interface{}) error {
 
 func BuildLookupStage(populate PopulateOptions) []bson.D {
 
-	var projection bson.D = nil
-
-	if len(populate.Projection) > 0 {
-
-		for _, projectionField := range populate.Projection {
-			projection = append(projection, bson.E{Key: projectionField, Value: 1})
-		}
-	}
-
-	lookupPipeline := bson.A{
-		bson.D{
-			{Key: "$match",
-				Value: bson.D{
-					{Key: "$expr",
-						Value: bson.D{
-							{Key: "$cond",
-								Value: bson.D{
-									{Key: "if", Value: bson.D{{Key: "$isArray", Value: "$$refId"}}},
-									{Key: "then",
-										Value: bson.D{
-											{Key: "$in",
-												Value: bson.A{
-													"$_id",
-													"$$refId",
-												},
-											},
-										},
-									},
-									{Key: "else",
-										Value: bson.D{
-											{Key: "$eq",
-												Value: bson.A{
-													"$_id",
-													"$$refId",
-												},
-											},
-										},
-									},
-								},
-							},
-						},
-					},
-				},
-			},
-		},
-		bson.D{
-			{Key: "$project",
-				Value: bson.D{
-					{Key: "__v", Value: 0},
-					{Key: "v", Value: 0},
-					{Key: "updated_at", Value: 0},
-					{Key: "created_at", Value: 0},
-				},
-			},
-		},
-	}
-
-	if projection != nil {
-		lookupPipeline = append(lookupPipeline, bson.D{
-			{Key: "$project", Value: projection},
-		})
-
-	}
-
 	lookup := bson.D{
 		{Key: "$lookup",
 			Value: bson.D{
 				{Key: "from", Value: populate.Collection},
-				{Key: "let", Value: bson.D{{Key: "refId", Value: "$" + populate.LocalField}}},
-				{Key: "pipeline",
-					Value: lookupPipeline,
-				},
+				{Key: "localField", Value: populate.LocalField},
+				{Key: "foreignField", Value: "_id"},
 				{Key: "as", Value: populate.As},
 			},
 		},
@@ -389,15 +323,7 @@ func BuildLookupStage(populate PopulateOptions) []bson.D {
 			},
 		}
 
-	unset := bson.D{
-		{Key: "$unset",
-			Value: bson.A{
-				"tmp_" + populate.LocalField,
-			},
-		},
-	}
-
-	expansion := []bson.D{lookup, addFields, unset}
+	expansion := []bson.D{lookup, addFields}
 
 	return expansion
 }
