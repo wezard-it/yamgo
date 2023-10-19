@@ -7,9 +7,9 @@ import (
 	"os"
 	"testing"
 
-	"github.com/nocfer/yamgo"
 	"github.com/ory/dockertest/v3"
 	"github.com/ory/dockertest/v3/docker"
+	"github.com/wezard-it/yamgo"
 )
 
 func TestMain(m *testing.M) {

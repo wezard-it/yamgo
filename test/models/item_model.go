@@ -1,7 +1,7 @@
 package models
 
 import (
-	"github.com/nocfer/yamgo"
+	"github.com/wezard-it/yamgo"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

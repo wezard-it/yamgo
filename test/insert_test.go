@@ -3,8 +3,8 @@ package test
 import (
 	"testing"
 
-	"github.com/nocfer/yamgo/test/models"
 	"github.com/stretchr/testify/assert"
+	"github.com/wezard-it/yamgo/test/models"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 )
 

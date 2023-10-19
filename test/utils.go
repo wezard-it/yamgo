@@ -3,7 +3,7 @@ package test
 import (
 	"context"
 
-	"github.com/nocfer/yamgo"
+	"github.com/wezard-it/yamgo"
 )
 
 func DropCollection(c string) {
@@ -12,4 +12,3 @@ func DropCollection(c string) {
 		panic(err)
 	}
 }
-
