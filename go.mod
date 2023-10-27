@@ -1,4 +1,4 @@
-module github.com/nocfer/yamgo
+module github.com/wezard-it/yamgo
 
 go 1.19
 
