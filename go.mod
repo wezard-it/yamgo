@@ -55,3 +55,5 @@ require (
 	golang.org/x/text v0.5.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
+
+replace github.com/nocfer/yamgo => github.com/wezard-it/yamgo v0.0.9
