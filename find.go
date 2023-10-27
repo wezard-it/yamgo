@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	P "github.com/gobeam/mongo-go-pagination"
 	"go.mongodb.org/mongo-driver/bson"
 	"go.mongodb.org/mongo-driver/bson/primitive"
 	"go.mongodb.org/mongo-driver/mongo"
@@ -104,6 +105,94 @@ func (mf *Model) executeCursorQuery(query []bson.M, sort bson.D, limit int64, co
 
 	// return mf.FindWithOptions(bson.M{"$and": query}, *options, results)
 
+}
+
+func (mf *Model) PaginatedAggregate(example *[]bson.Raw, prevCursor string, nextCursor string, limit int64, pipeline ...interface{}) (Page, error) {
+
+	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
+
+	defer cancel()
+
+	var err error
+	index := int64(1)
+
+	var prev int64 = -1
+	if prevCursor != "" {
+		decodedCursor, err := decodeCursor(prevCursor)
+		if err != nil {
+			return Page{}, err
+		}
+		if len(decodedCursor) > 0 {
+			value, ok := decodedCursor[0].Value.(int64)
+			if !ok || value <= 0 {
+				return Page{}, errors.New("invalid cursor")
+			}
+			prev = value
+		}
+	}
+
+	var next int64 = -1
+	if nextCursor != "" {
+		decodedCursor, err := decodeCursor(nextCursor)
+		if err != nil {
+			return Page{}, err
+		}
+		if len(decodedCursor) > 0 {
+			value, ok := decodedCursor[0].Value.(int64)
+			if !ok || value <= 1 {
+				return Page{}, errors.New("invalid cursor")
+			}
+			next = value
+		}
+	}
+
+	if next > 1 {
+		index = next
+	} else if prev > 0 {
+		index = prev
+	}
+
+	cur, err := P.New(mf.col).Context(ctx).Page(index).Limit(limit).Aggregate(pipeline...)
+	if err != nil {
+		return Page{}, err
+	}
+	index = cur.Pagination.Page
+
+	oPrev := int64(-1)
+	hasPrev := false
+	oPrevCursor := ""
+	if index > 1 {
+		oPrev = index - 1
+		hasPrev = true
+		oPrevCursor, err = encodeCursor(bson.D{{Key: "page", Value: oPrev}})
+		if err != nil {
+			return Page{}, err
+		}
+	}
+
+	var oNext int64 = -1
+	hasNext := false
+	oNextCursor := ""
+	if index > 0 && index < cur.Pagination.Total {
+		oNext = index + 1
+		hasNext = true
+		oNextCursor, err = encodeCursor(bson.D{{Key: "page", Value: oNext}})
+		if err != nil {
+			return Page{}, err
+		}
+	}
+
+	*example = cur.Data
+
+	page := Page{
+		Previous:    oPrevCursor,
+		HasPrevious: hasPrev,
+		Next:        oNextCursor,
+		HasNext:     hasNext,
+		Count:       int(cur.Pagination.Total),
+	}
+
+	return page, nil
 }
 
 func (mf *Model) PaginatedFind(params PaginationFindParams, results interface{}) (Page, error) {
