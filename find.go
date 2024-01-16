@@ -362,7 +362,7 @@ func (mf *Model) FindAndPopulate(filter bson.M, option options.FindOptions, popu
 
 func (mf *Model) Aggregate(pipeline mongo.Pipeline, results interface{}) error {
 
-	ctx, cancel := context.WithTimeout(context.Background(), MediumTimeout*time.Second)
+	ctx, cancel := context.WithTimeout(context.Background(), LongTimeout*time.Second)
 
 	defer cancel()
 
